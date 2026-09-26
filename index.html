@@ -60,28 +60,31 @@ button { cursor: pointer; font-weight: 600; border: none; border-radius: 12px; f
 @media (max-width: 768px) { .columns { grid-template-columns: 1fr; } }
 .col-title { font-weight: 700; margin-bottom: 16px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
 
-/* Draggable Blocks & Slots */
+/* Blocos & Slots - Simplificado (Sem Arrastar) */
 .pool-list, .slot-list { list-style: none; margin: 0; padding: 0; min-height: 80px; }
 .block { 
   background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px;
-  display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow); cursor: grab; touch-action: none; user-select: none;
+  display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow);
   font-weight: 500;
 }
-.block .h { color: var(--muted); cursor: grab; display: flex; align-items: center; opacity: 0.5; }
-.block.dragging { opacity: 0.4; transform: scale(0.98); border-style: dashed; }
 .block.correct { background: rgba(22, 163, 74, 0.1); border-color: var(--green); color: var(--green); }
 .block.incorrect { background: rgba(220, 38, 38, 0.1); border-color: var(--red); color: var(--red); }
 
-/* NOVA ESTILIZAÇÃO: Input numérico para colocação rápida */
+/* Input numérico para colocação e botão de remover */
 .block-input-wrap { display: flex; align-items: center; gap: 8px; flex: 1; justify-content: space-between; }
 .num-input { 
-  width: 40px; height: 32px; text-align: center; border-radius: 6px; border: 1px solid var(--border); 
-  background: var(--bg); color: var(--text); font-weight: 600; font-size: 0.95rem;
-  /* Remove setas do input type number */
+  width: 44px; height: 36px; text-align: center; border-radius: 8px; border: 1px solid var(--border); 
+  background: var(--bg); color: var(--text); font-weight: 700; font-size: 1rem;
   -moz-appearance: textfield; 
 }
 .num-input::-webkit-outer-spin-button, .num-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .num-input:focus { outline: 2px solid var(--blue); border-color: transparent; }
+
+.remove-btn {
+  width: 36px; height: 36px; border-radius: 8px; border: none; background: rgba(220, 38, 38, 0.1); color: var(--red);
+  display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: background 0.2s;
+}
+.remove-btn:hover { background: rgba(220, 38, 38, 0.2); }
 
 .slot-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .slot-num { width: 24px; color: var(--muted); font-weight: 700; text-align: right; }
@@ -90,14 +93,7 @@ button { cursor: pointer; font-weight: 600; border: none; border-radius: 12px; f
   display: flex; align-items: center; padding: 0 4px; background: rgba(0,0,0,0.02); transition: all 0.2s;
 }
 .slot.filled { border: none; padding: 0; background: transparent; }
-.slot.over { border-color: var(--blue); background: rgba(37,99,235,0.05); transform: scale(1.02); }
 .slot .ph { color: var(--muted); padding: 14px; font-size: 0.95rem; font-style: italic; opacity: 0.7; pointer-events: none; }
-
-/* Adições para Tap & Seleção Móvel */
-.block.selected { border: 2px solid var(--blue); box-shadow: 0 0 0 4px rgba(37,99,235,0.2); transform: scale(1.02); z-index: 10; }
-.slot.highlight-target { border-color: var(--green); background: rgba(22, 163, 74, 0.05); cursor: pointer; animation: pulseTarget 1.5s infinite; }
-@keyframes pulseTarget { 0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(22, 163, 74, 0); } 100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); } }
-.slot-num { cursor: pointer; }
 
 .verify-btn { background: var(--blue); color: #fff; width: 100%; padding: 16px; margin-top: 24px; font-size: 1.1rem; font-weight: 700; border-radius: 12px; box-shadow: 0 4px 12px rgba(37,99,235,0.2); }
 .verify-btn:hover { background: var(--blue-dk); }
@@ -140,7 +136,7 @@ button { cursor: pointer; font-weight: 600; border: none; border-radius: 12px; f
   </div>
 
   <div id="landing" class="screen">
-    <div class="hint">Cole a letra do louvor, embaralhe os blocos e tente remontar a ordem correta para testar a sua memória.<br><b>Dica Móvel:</b> Pode arrastar os blocos, ou simplesmente tocar num bloco e tocar na posição de destino.</div>
+    <div class="hint">Cole a letra do louvor, embaralhe os blocos e tente remontar a ordem correta para testar a sua memória.<br><b>Dica:</b> Digite o número da posição desejada na caixa ao lado de cada bloco para o mover.</div>
     <div class="card">
       <label style="font-weight:600;">Cole a letra do louvor aqui:</label>
       <textarea id="lyricInput" maxlength="2000" placeholder="Pensando bem
@@ -188,8 +184,6 @@ let blocks = [];
 let pool = [];        
 let slots = [];       
 let attempts = 0;
-// Removido hasVerified, correção em tempo real ativada
-let selection = null; // {id, from, index} para encaixe rápido
 
 const landing = document.getElementById('landing');
 const game = document.getElementById('game');
@@ -232,7 +226,6 @@ document.getElementById('newLyricBtn').onclick = showLanding;
 document.getElementById('reshuffleBtn').onclick = () => {
   showModal('confirm', 0, null, 'Tem a certeza que deseja embaralhar todos os blocos e recomeçar?', () => {
     shuffleAndReset();
-    selection = null;
     attempts = 0;
     save();
     render();
@@ -276,18 +269,15 @@ function render() {
     const b = getBlock(id);
     const li = document.createElement('li');
     li.className = 'block'; li.dataset.id = id; li.dataset.from = 'pool';
-    if(selection && selection.id === id) li.classList.add('selected');
     
-    // Adicionado o input numérico ao bloco no pool
+    // Simplificado apenas para o input numérico
     li.innerHTML = `
-      <span class="h">⠿</span>
       <div class="block-input-wrap">
         <span>${escapeHtml(b.text)}</span>
         <input type="number" class="num-input" min="1" max="${blocks.length}" placeholder="#" aria-label="Posição desejada">
       </div>
     `;
     
-    attachDrag(li);
     attachNumberInput(li, id); // Liga o evento de input de número
     poolList.appendChild(li);
   });
@@ -303,21 +293,30 @@ function render() {
       const b = getBlock(id);
       const li = document.createElement('div'); li.className = 'block'; li.style.margin = '0'; li.style.width = '100%';
       li.dataset.id = id; li.dataset.from = 'slot'; li.dataset.slotIndex = i;
-      li.innerHTML = '<span class="h">⠿</span><span>' + escapeHtml(b.text) + '</span>';
+      
+      li.innerHTML = `
+        <div class="block-input-wrap">
+          <span>${escapeHtml(b.text)}</span>
+          <button class="remove-btn" aria-label="Remover do slot" title="Devolver bloco">✕</button>
+        </div>
+      `;
       
       // NOVA LÓGICA: As cores aparecem imediatamente em tempo real
       li.classList.add(b.originalPosition === i ? 'correct' : 'incorrect');
-      if(selection && selection.id === id) li.classList.add('selected');
       
-      attachDrag(li);
+      // Evento de remover o bloco
+      const rmBtn = li.querySelector('.remove-btn');
+      rmBtn.onclick = () => {
+        slots[i] = null;
+        pool.push(id);
+        attempts++;
+        save();
+        render();
+      };
+      
       slot.appendChild(li);
     } else {
-      if(selection) {
-        slot.classList.add('highlight-target');
-        slot.innerHTML = '<span class="ph" style="color:var(--green);font-weight:600;">↳ Toque aqui para mover</span>';
-      } else {
-        slot.innerHTML = '<span class="ph">Arraste ou selecione e toque aqui</span>';
-      }
+      slot.innerHTML = '<span class="ph">Digite o número no bloco para o mover para aqui</span>';
     }
     row.appendChild(num); row.appendChild(slot);
     slotArea.appendChild(row);
@@ -327,10 +326,6 @@ function render() {
 // NOVA FUNÇÃO: Manipulador para colocação via input numérico
 function attachNumberInput(li, blockId) {
   const input = li.querySelector('.num-input');
-  
-  // Evita que clicar no input ative o Drag&Drop ou Tap-to-Place do bloco
-  input.addEventListener('pointerdown', (e) => e.stopPropagation());
-  input.addEventListener('click', (e) => e.stopPropagation());
   
   input.addEventListener('change', (e) => {
     let val = parseInt(e.target.value);
@@ -352,190 +347,17 @@ function attachNumberInput(li, blockId) {
     slots[targetIndex] = blockId; // Insere o novo bloco
     attempts++;
     
-    selection = null; // Limpa seleções pendentes, se existirem
     save();
     render();
     
-    // Usamos setTimeout para que a renderização termine antes de focar
+    // Usamos setTimeout para que a renderização termine antes de verificar
     setTimeout(() => {
         checkWinCondition();
-        // Opcional: focar no próximo bloco disponível do pool, se quiser um fluxo contínuo de digitação
+        // Opcional: focar no próximo bloco disponível do pool
         const nextInput = document.querySelector('.pool-list .num-input');
         if(nextInput) nextInput.focus();
     }, 50);
   });
-}
-
-// ---- Drag & Drop via Pointer Events ----
-let dragEl = null, dragId = null, dragFrom = null, dragFromIndex = null, ghost = null;
-let pDownTime = 0, pDownX = 0, pDownY = 0;
-
-function attachDrag(el) { el.addEventListener('pointerdown', onPointerDown); }
-
-function onPointerDown(e) {
-  if(e.button !== 0 && e.type !== 'touchstart') return; // Apenas clique esquerdo ou toque
-  e.preventDefault(); // Evita comportamentos padrão de arrastar imagens/selecionar texto
-  
-  pDownTime = Date.now();
-  pDownX = e.clientX;
-  pDownY = e.clientY;
-  
-  dragEl = e.currentTarget;
-  dragId = parseInt(dragEl.dataset.id);
-  dragFrom = dragEl.dataset.from;
-  dragFromIndex = dragFrom === 'slot' ? parseInt(dragEl.dataset.slotIndex) : null;
-  
-  const rect = dragEl.getBoundingClientRect();
-  ghost = dragEl.cloneNode(true);
-  ghost.className = 'block ghost';
-  ghost.style.width = rect.width + 'px';
-  // Centraliza o fantasma no cursor/dedo para não interferir com a deteção da zona (touch target)
-  ghost.style.left = (e.clientX - rect.width / 2) + 'px';
-  ghost.style.top = (e.clientY - rect.height / 2) + 'px';
-  
-  document.body.appendChild(ghost);
-  dragEl.classList.add('dragging');
-  
-  document.addEventListener('pointermove', onPointerMove, { passive: false });
-  document.addEventListener('pointerup', onPointerUp);
-  document.addEventListener('pointercancel', onPointerUp);
-}
-
-function onPointerMove(e) {
-  if (!ghost) return;
-  e.preventDefault(); // Mantém o fantasma centrado e remove scroll acidental no telemóvel
-  
-  ghost.style.left = (e.clientX - ghost.offsetWidth / 2) + 'px';
-  ghost.style.top = (e.clientY - ghost.offsetHeight / 2) + 'px';
-  
-  document.querySelectorAll('.slot').forEach(s => s.classList.remove('over'));
-  const under = document.elementFromPoint(e.clientX, e.clientY);
-  const slotEl = under && under.closest('.slot');
-  if (slotEl) slotEl.classList.add('over');
-}
-
-function onPointerUp(e) {
-  document.removeEventListener('pointermove', onPointerMove);
-  document.removeEventListener('pointerup', onPointerUp);
-  document.removeEventListener('pointercancel', onPointerUp);
-  
-  const isTap = (Date.now() - pDownTime < 300) && (Math.abs(e.clientX - pDownX) < 10) && (Math.abs(e.clientY - pDownY) < 10);
-
-  if (ghost) { ghost.remove(); ghost = null; }
-  if (dragEl) dragEl.classList.remove('dragging');
-  document.querySelectorAll('.slot').forEach(s => s.classList.remove('over'));
-
-  if (isTap) {
-    const under = document.elementFromPoint(e.clientX, e.clientY);
-    const slotEl = under && under.closest('.slot');
-    const blockEl = under && under.closest('.block');
-    const slotNumEl = under && under.closest('.slot-num');
-
-    if (blockEl && blockEl.dataset.id) {
-       handleBlockTap(parseInt(blockEl.dataset.id), blockEl.dataset.from, blockEl.dataset.slotIndex !== undefined ? parseInt(blockEl.dataset.slotIndex) : null);
-    } else if (slotEl || slotNumEl) {
-       const targetSlot = slotEl ? slotEl : slotNumEl.nextElementSibling;
-       if (targetSlot && targetSlot.dataset.index) handleSlotTap(parseInt(targetSlot.dataset.index));
-    } else {
-       selection = null;
-       render();
-    }
-    dragEl = null; dragId = null; dragFrom = null; dragFromIndex = null;
-    return;
-  }
-
-  const under = document.elementFromPoint(e.clientX, e.clientY);
-  const slotEl = under && under.closest('.slot');
-  const poolEl = under && under.closest('.pool-list');
-
-  let stateChanged = false;
-
-  if (slotEl) {
-    const j = parseInt(slotEl.dataset.index);
-    if (dragFrom === 'pool') {
-      pool = pool.filter(x => x !== dragId);
-      if (slots[j] !== null) { pool.push(slots[j]); }
-      slots[j] = dragId;
-      stateChanged = true;
-    } else if (dragFrom === 'slot') {
-      const i = dragFromIndex;
-      if (i !== j) {
-        const tmp = slots[j];
-        slots[j] = slots[i];
-        slots[i] = tmp;
-        stateChanged = true;
-      }
-    }
-  } else if (poolEl && dragFrom === 'slot') {
-    slots[dragFromIndex] = null;
-    pool.push(dragId);
-    stateChanged = true;
-  }
-
-  if (stateChanged) attempts++;
-
-  save();
-  render();
-  checkWinCondition();
-  dragEl = null; dragId = null; dragFrom = null; dragFromIndex = null;
-}
-
-// Manipuladores de Toque / Clique (Tap-to-place)
-function handleBlockTap(id, from, index) {
-  if (!selection) {
-    selection = { id, from, index };
-  } else if (selection.id === id) {
-    selection = null; // Desselecionar se tocar de novo
-  } else {
-    // Trocar ou mover
-    if (selection.from === 'pool' && from === 'slot') {
-      pool = pool.filter(x => x !== selection.id);
-      pool.push(slots[index]);
-      slots[index] = selection.id;
-      selection = null;
-      attempts++;
-    } else if (selection.from === 'slot' && from === 'pool') {
-      pool = pool.filter(x => x !== id);
-      pool.push(slots[selection.index]);
-      slots[selection.index] = id;
-      selection = null;
-      attempts++;
-    } else if (selection.from === 'slot' && from === 'slot') {
-      const temp = slots[index];
-      slots[index] = selection.id;
-      slots[selection.index] = temp;
-      selection = null;
-      attempts++;
-    } else {
-      // Se tocar noutro bloco do banco, apenas muda a seleção
-      selection = { id, from, index };
-      render();
-      return;
-    }
-  }
-  save();
-  render();
-  checkWinCondition();
-}
-
-function handleSlotTap(index) {
-  if (!selection) return;
-
-  if (selection.from === 'pool') {
-    pool = pool.filter(x => x !== selection.id);
-    if (slots[index] !== null) pool.push(slots[index]);
-    slots[index] = selection.id;
-  } else if (selection.from === 'slot') {
-    if (selection.index === index) { selection = null; render(); return; }
-    const temp = slots[index];
-    slots[index] = selection.id;
-    slots[selection.index] = temp;
-  }
-  attempts++;
-  selection = null;
-  save();
-  render();
-  checkWinCondition();
 }
 
 function checkWinCondition() {
