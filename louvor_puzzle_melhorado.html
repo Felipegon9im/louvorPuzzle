@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Louvor Puzzle</title>
+<style>
+:root {
+  --blue: #2563eb; --blue-dk: #1d4ed8; --green: #16a34a; --red: #dc2626; --yellow: #eab308;
+  --bg: #f8fafc; --card: #ffffff; --text: #0f172a; --muted: #64748b; --border: #e2e8f0;
+  --shadow: 0 4px 20px rgba(0,0,0,0.05);
+}
+:root[data-theme="dark"] {
+  --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --muted: #94a3b8; --border: #334155;
+  --shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+* { box-sizing: border-box; transition: background-color 0.2s ease, border-color 0.2s ease; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+body { 
+  margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+  background: var(--bg); color: var(--text);
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.hidden { display: none !important; }
+.wrap { max-width: 900px; margin: 0 auto; padding: 24px 16px 60px; }
+
+/* Header & Typography */
+.header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+h1 { font-size: 2.2rem; margin: 0; color: var(--blue); font-weight: 800; letter-spacing: -0.5px; }
+.sub { font-size: 1.1rem; color: var(--muted); margin-bottom: 8px; }
+.hint { color: var(--muted); margin-bottom: 24px; font-size: 0.95rem; }
+
+/* Cards & Inputs */
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); padding: 24px; }
+textarea { 
+  width: 100%; min-height: 200px; border-radius: 12px; border: 1px solid var(--border); padding: 16px; 
+  font-size: 1rem; background: var(--bg); color: var(--text); resize: vertical; margin-top: 12px;
+  font-family: inherit; line-height: 1.5;
+}
+textarea:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+.count { text-align: right; color: var(--muted); font-size: 0.85rem; margin: 8px 0 20px; font-weight: 500; }
+
+/* Buttons */
+button { cursor: pointer; font-weight: 600; border: none; border-radius: 12px; font-size: 1rem; transition: all 0.2s; }
+.btn-primary { background: var(--blue); color: #fff; width: 100%; padding: 16px; font-size: 1.1rem; }
+.btn-primary:hover { background: var(--blue-dk); transform: translateY(-1px); }
+.btn-primary:active { transform: scale(0.98); }
+.btn-icon { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 10px; border-radius: 50%; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; }
+.btn-icon:hover { background: var(--border); }
+
+/* Game Stats & Layout */
+.game-header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.stats { display: flex; gap: 12px; flex-wrap: wrap; }
+.stat { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 16px; font-size: 0.9rem; color: var(--muted); box-shadow: var(--shadow); }
+.stat b { display: block; font-size: 1.2rem; color: var(--text); margin-top: 2px; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-sm { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 10px 16px; font-size: 0.95rem; border-radius: 10px; }
+.btn-sm:hover { background: var(--border); }
+.columns { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media (max-width: 768px) { .columns { grid-template-columns: 1fr; } }
+.col-title { font-weight: 700; margin-bottom: 16px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
+
+/* Draggable Blocks & Slots */
+.pool-list, .slot-list { list-style: none; margin: 0; padding: 0; min-height: 80px; }
+.block { 
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow); cursor: grab; touch-action: none; user-select: none;
+  font-weight: 500;
+}
+.block .h { color: var(--muted); cursor: grab; display: flex; align-items: center; opacity: 0.5; }
+.block.dragging { opacity: 0.4; transform: scale(0.98); border-style: dashed; }
+.block.correct { background: rgba(22, 163, 74, 0.1); border-color: var(--green); color: var(--green); }
+.block.incorrect { background: rgba(220, 38, 38, 0.1); border-color: var(--red); color: var(--red); }
+
+/* NOVA ESTILIZAÇÃO: Input numérico para colocação rápida */
+.block-input-wrap { display: flex; align-items: center; gap: 8px; flex: 1; justify-content: space-between; }
+.num-input { 
+  width: 40px; height: 32px; text-align: center; border-radius: 6px; border: 1px solid var(--border); 
+  background: var(--bg); color: var(--text); font-weight: 600; font-size: 0.95rem;
+  /* Remove setas do input type number */
+  -moz-appearance: textfield; 
+}
+.num-input::-webkit-outer-spin-button, .num-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.num-input:focus { outline: 2px solid var(--blue); border-color: transparent; }
+
+.slot-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.slot-num { width: 24px; color: var(--muted); font-weight: 700; text-align: right; }
+.slot { 
+  flex: 1; border: 2px dashed var(--border); border-radius: 12px; min-height: 54px; 
+  display: flex; align-items: center; padding: 0 4px; background: rgba(0,0,0,0.02); transition: all 0.2s;
+}
+.slot.filled { border: none; padding: 0; background: transparent; }
+.slot.over { border-color: var(--blue); background: rgba(37,99,235,0.05); transform: scale(1.02); }
+.slot .ph { color: var(--muted); padding: 14px; font-size: 0.95rem; font-style: italic; opacity: 0.7; pointer-events: none; }
+
+/* Adições para Tap & Seleção Móvel */
+.block.selected { border: 2px solid var(--blue); box-shadow: 0 0 0 4px rgba(37,99,235,0.2); transform: scale(1.02); z-index: 10; }
+.slot.highlight-target { border-color: var(--green); background: rgba(22, 163, 74, 0.05); cursor: pointer; animation: pulseTarget 1.5s infinite; }
+@keyframes pulseTarget { 0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(22, 163, 74, 0); } 100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); } }
+.slot-num { cursor: pointer; }
+
+.verify-btn { background: var(--blue); color: #fff; width: 100%; padding: 16px; margin-top: 24px; font-size: 1.1rem; font-weight: 700; border-radius: 12px; box-shadow: 0 4px 12px rgba(37,99,235,0.2); }
+.verify-btn:hover { background: var(--blue-dk); }
+
+/* Ghost & Modal */
+.ghost { position: fixed; pointer-events: none !important; z-index: 9999; opacity: 0.9; box-shadow: 0 10px 25px rgba(0,0,0,0.15); transform: scale(1.05); }
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; animation: fadeIn 0.3s ease; }
+.modal { border-radius: 24px; padding: 32px; max-width: 440px; width: 100%; text-align: center; color: #fff; box-shadow: 0 20px 40px rgba(0,0,0,0.3); animation: slideUp 0.3s ease; }
+.modal.success { background: linear-gradient(145deg, #064e3b, #022c22); }
+.modal.partial { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+.modal.error { background: var(--card); color: var(--text); border: 1px solid var(--red); }
+.modal .icon { font-size: 3.5rem; margin-bottom: 8px; line-height: 1; }
+.modal h2 { margin: 8px 0; font-size: 1.8rem; }
+.modal .pct { font-size: 2.5rem; font-weight: 800; margin: 12px 0 8px; color: var(--yellow); }
+.bar { background: rgba(150,150,150,0.2); border-radius: 12px; height: 12px; overflow: hidden; margin: 16px 0; }
+.bar > div { height: 100%; background: var(--blue); transition: width 0.5s ease-out; }
+.modal.success .bar > div { background: var(--green); }
+.result-list { text-align: left; background: rgba(0,0,0,0.05); border-radius: 12px; padding: 16px; margin: 20px 0; font-size: 0.95rem; max-height: 200px; overflow-y: auto; }
+.modal.success .result-list { background: rgba(255,255,255,0.1); }
+.result-list div { padding: 6px 0; border-bottom: 1px solid rgba(150,150,150,0.1); }
+.result-list div:last-child { border-bottom: none; }
+.modal button { width: 100%; padding: 16px; margin-top: 12px; font-size: 1.05rem; border-radius: 12px; }
+.modal .primary { background: var(--green); color: #fff; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3); }
+.modal .secondary { background: var(--bg); border: 1px solid var(--border); color: var(--text); }
+.modal .danger { background: var(--red); color: #fff; border: none; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header-top">
+    <div>
+      <h1>🎵 Louvor Puzzle</h1>
+      <div class="sub">Transforme letras em memória.</div>
+    </div>
+    <button id="themeToggle" class="btn-icon" aria-label="Alternar Tema">🌙</button>
+  </div>
+
+  <div id="landing" class="screen">
+    <div class="hint">Cole a letra do louvor, embaralhe os blocos e tente remontar a ordem correta para testar a sua memória.<br><b>Dica Móvel:</b> Pode arrastar os blocos, ou simplesmente tocar num bloco e tocar na posição de destino.</div>
+    <div class="card">
+      <label style="font-weight:600;">Cole a letra do louvor aqui:</label>
+      <textarea id="lyricInput" maxlength="2000" placeholder="Pensando bem
+Só a presença de Jesus em minha vida
+É o que me faz vencer
+Mesmo quando tudo parece difícil
+Eu sei que Ele está comigo"></textarea>
+      <div class="count"><span id="charCount">0</span>/2000</div>
+      <button class="btn-primary" id="createBtn">▶ CRIAR QUEBRA-CABEÇA</button>
+    </div>
+  </div>
+
+  <div id="game" class="screen hidden">
+    <div class="game-header">
+      <div class="stats">
+        <div class="stat">🧩 Blocos<b id="statBlocks">0</b></div>
+        <div class="stat">✅ Acertos<b id="statCorrect">0/0</b></div>
+        <div class="stat">🔄 Tentativas<b id="statAttempts">0</b></div>
+      </div>
+      <div class="actions">
+        <button class="btn-sm" id="reshuffleBtn">🔄 Embaralhar</button>
+        <button class="btn-sm" id="newLyricBtn">📝 Nova letra</button>
+      </div>
+    </div>
+    <div class="columns">
+      <div>
+        <div class="col-title">🧩 Blocos embaralhados</div>
+        <ul class="pool-list" id="poolList"></ul>
+      </div>
+      <div>
+        <div class="col-title">🎵 A minha letra</div>
+        <div id="slotArea"></div>
+        <button class="verify-btn" id="verifyBtn">✓ VERIFICAR</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="modalOverlay" class="overlay hidden"></div>
+
+<script>
+const LS_KEY = 'louvorPuzzleState_v2';
+let blocks = [];      
+let pool = [];        
+let slots = [];       
+let attempts = 0;
+// Removido hasVerified, correção em tempo real ativada
+let selection = null; // {id, from, index} para encaixe rápido
+
+const landing = document.getElementById('landing');
+const game = document.getElementById('game');
+const lyricInput = document.getElementById('lyricInput');
+const charCount = document.getElementById('charCount');
+const themeToggle = document.getElementById('themeToggle');
+
+// Gestão de Tema (Dark Mode)
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const newTheme = isDark ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', newTheme);
+  themeToggle.textContent = isDark ? '🌙' : '☀️';
+  localStorage.setItem('louvorPuzzleTheme', newTheme);
+}
+themeToggle.addEventListener('click', toggleTheme);
+const savedTheme = localStorage.getItem('louvorPuzzleTheme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+document.documentElement.setAttribute('data-theme', savedTheme);
+themeToggle.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+
+lyricInput.addEventListener('input', () => charCount.textContent = lyricInput.value.length);
+
+// Criação do Puzzle
+document.getElementById('createBtn').onclick = () => {
+  const lines = lyricInput.value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  if (lines.length < 2) { 
+    showModal('error', 0, null, 'Cole pelo menos 2 linhas de texto para criar um puzzle.'); 
+    return; 
+  }
+  blocks = lines.map((t, i) => ({ id: i + 1, text: t, originalPosition: i }));
+  attempts = 0;
+  selection = null;
+  shuffleAndReset();
+  save();
+  showGame();
+};
+
+document.getElementById('newLyricBtn').onclick = showLanding;
+
+document.getElementById('reshuffleBtn').onclick = () => {
+  showModal('confirm', 0, null, 'Tem a certeza que deseja embaralhar todos os blocos e recomeçar?', () => {
+    shuffleAndReset();
+    selection = null;
+    attempts = 0;
+    save();
+    render();
+  });
+};
+
+document.getElementById('verifyBtn').onclick = verify;
+
+function shuffleAndReset() {
+  slots = new Array(blocks.length).fill(null);
+  let ids = blocks.map(b => b.id);
+  let shuffled = shuffle(ids.slice());
+  let same = shuffled.every((v, i) => v === ids[i]);
+  if (same && shuffled.length > 1) { [shuffled[0], shuffled[1]] = [shuffled[1], shuffled[0]]; }
+  pool = shuffled;
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function showLanding() { landing.classList.remove('hidden'); game.classList.add('hidden'); }
+function showGame() { landing.classList.add('hidden'); game.classList.remove('hidden'); render(); }
+function getBlock(id) { return blocks.find(b => b.id === id); }
+
+function render() {
+  document.getElementById('statBlocks').textContent = blocks.length;
+  document.getElementById('statAttempts').textContent = attempts;
+  
+  // Cores e acertos em tempo real
+  const liveCorrect = slots.filter((id, i) => id !== null && getBlock(id).originalPosition === i).length;
+  document.getElementById('statCorrect').textContent = liveCorrect + '/' + blocks.length;
+
+  const poolList = document.getElementById('poolList');
+  poolList.innerHTML = '';
+  pool.forEach(id => {
+    const b = getBlock(id);
+    const li = document.createElement('li');
+    li.className = 'block'; li.dataset.id = id; li.dataset.from = 'pool';
+    if(selection && selection.id === id) li.classList.add('selected');
+    
+    // Adicionado o input numérico ao bloco no pool
+    li.innerHTML = `
+      <span class="h">⠿</span>
+      <div class="block-input-wrap">
+        <span>${escapeHtml(b.text)}</span>
+        <input type="number" class="num-input" min="1" max="${blocks.length}" placeholder="#" aria-label="Posição desejada">
+      </div>
+    `;
+    
+    attachDrag(li);
+    attachNumberInput(li, id); // Liga o evento de input de número
+    poolList.appendChild(li);
+  });
+
+  const slotArea = document.getElementById('slotArea');
+  slotArea.innerHTML = '';
+  slots.forEach((id, i) => {
+    const row = document.createElement('div'); row.className = 'slot-row';
+    const num = document.createElement('div'); num.className = 'slot-num'; num.textContent = (i + 1) + '.';
+    const slot = document.createElement('div'); slot.className = 'slot' + (id ? ' filled' : ''); slot.dataset.index = i;
+    
+    if (id) {
+      const b = getBlock(id);
+      const li = document.createElement('div'); li.className = 'block'; li.style.margin = '0'; li.style.width = '100%';
+      li.dataset.id = id; li.dataset.from = 'slot'; li.dataset.slotIndex = i;
+      li.innerHTML = '<span class="h">⠿</span><span>' + escapeHtml(b.text) + '</span>';
+      
+      // NOVA LÓGICA: As cores aparecem imediatamente em tempo real
+      li.classList.add(b.originalPosition === i ? 'correct' : 'incorrect');
+      if(selection && selection.id === id) li.classList.add('selected');
+      
+      attachDrag(li);
+      slot.appendChild(li);
+    } else {
+      if(selection) {
+        slot.classList.add('highlight-target');
+        slot.innerHTML = '<span class="ph" style="color:var(--green);font-weight:600;">↳ Toque aqui para mover</span>';
+      } else {
+        slot.innerHTML = '<span class="ph">Arraste ou selecione e toque aqui</span>';
+      }
+    }
+    row.appendChild(num); row.appendChild(slot);
+    slotArea.appendChild(row);
+  });
+}
+
+// NOVA FUNÇÃO: Manipulador para colocação via input numérico
+function attachNumberInput(li, blockId) {
+  const input = li.querySelector('.num-input');
+  
+  // Evita que clicar no input ative o Drag&Drop ou Tap-to-Place do bloco
+  input.addEventListener('pointerdown', (e) => e.stopPropagation());
+  input.addEventListener('click', (e) => e.stopPropagation());
+  
+  input.addEventListener('change', (e) => {
+    let val = parseInt(e.target.value);
+    if(isNaN(val) || val < 1 || val > blocks.length) {
+      e.target.value = ''; // Limpa se for inválido
+      return;
+    }
+    
+    const targetIndex = val - 1; // Posições visuais são base 1, array é base 0
+    
+    // Move o bloco para a ranhura (slot) indicada
+    pool = pool.filter(x => x !== blockId); // Remove do pool
+    
+    if (slots[targetIndex] !== null) {
+      // Se a ranhura já tiver um bloco, devolve-o ao pool
+      pool.push(slots[targetIndex]);
+    }
+    
+    slots[targetIndex] = blockId; // Insere o novo bloco
+    attempts++;
+    
+    selection = null; // Limpa seleções pendentes, se existirem
+    save();
+    render();
+    
+    // Usamos setTimeout para que a renderização termine antes de focar
+    setTimeout(() => {
+        checkWinCondition();
+        // Opcional: focar no próximo bloco disponível do pool, se quiser um fluxo contínuo de digitação
+        const nextInput = document.querySelector('.pool-list .num-input');
+        if(nextInput) nextInput.focus();
+    }, 50);
+  });
+}
+
+// ---- Drag & Drop via Pointer Events ----
+let dragEl = null, dragId = null, dragFrom = null, dragFromIndex = null, ghost = null;
+let pDownTime = 0, pDownX = 0, pDownY = 0;
+
+function attachDrag(el) { el.addEventListener('pointerdown', onPointerDown); }
+
+function onPointerDown(e) {
+  if(e.button !== 0 && e.type !== 'touchstart') return; // Apenas clique esquerdo ou toque
+  e.preventDefault(); // Evita comportamentos padrão de arrastar imagens/selecionar texto
+  
+  pDownTime = Date.now();
+  pDownX = e.clientX;
+  pDownY = e.clientY;
+  
+  dragEl = e.currentTarget;
+  dragId = parseInt(dragEl.dataset.id);
+  dragFrom = dragEl.dataset.from;
+  dragFromIndex = dragFrom === 'slot' ? parseInt(dragEl.dataset.slotIndex) : null;
+  
+  const rect = dragEl.getBoundingClientRect();
+  ghost = dragEl.cloneNode(true);
+  ghost.className = 'block ghost';
+  ghost.style.width = rect.width + 'px';
+  // Centraliza o fantasma no cursor/dedo para não interferir com a deteção da zona (touch target)
+  ghost.style.left = (e.clientX - rect.width / 2) + 'px';
+  ghost.style.top = (e.clientY - rect.height / 2) + 'px';
+  
+  document.body.appendChild(ghost);
+  dragEl.classList.add('dragging');
+  
+  document.addEventListener('pointermove', onPointerMove, { passive: false });
+  document.addEventListener('pointerup', onPointerUp);
+  document.addEventListener('pointercancel', onPointerUp);
+}
+
+function onPointerMove(e) {
+  if (!ghost) return;
+  e.preventDefault(); // Mantém o fantasma centrado e remove scroll acidental no telemóvel
+  
+  ghost.style.left = (e.clientX - ghost.offsetWidth / 2) + 'px';
+  ghost.style.top = (e.clientY - ghost.offsetHeight / 2) + 'px';
+  
+  document.querySelectorAll('.slot').forEach(s => s.classList.remove('over'));
+  const under = document.elementFromPoint(e.clientX, e.clientY);
+  const slotEl = under && under.closest('.slot');
+  if (slotEl) slotEl.classList.add('over');
+}
+
+function onPointerUp(e) {
+  document.removeEventListener('pointermove', onPointerMove);
+  document.removeEventListener('pointerup', onPointerUp);
+  document.removeEventListener('pointercancel', onPointerUp);
+  
+  const isTap = (Date.now() - pDownTime < 300) && (Math.abs(e.clientX - pDownX) < 10) && (Math.abs(e.clientY - pDownY) < 10);
+
+  if (ghost) { ghost.remove(); ghost = null; }
+  if (dragEl) dragEl.classList.remove('dragging');
+  document.querySelectorAll('.slot').forEach(s => s.classList.remove('over'));
+
+  if (isTap) {
+    const under = document.elementFromPoint(e.clientX, e.clientY);
+    const slotEl = under && under.closest('.slot');
+    const blockEl = under && under.closest('.block');
+    const slotNumEl = under && under.closest('.slot-num');
+
+    if (blockEl && blockEl.dataset.id) {
+       handleBlockTap(parseInt(blockEl.dataset.id), blockEl.dataset.from, blockEl.dataset.slotIndex !== undefined ? parseInt(blockEl.dataset.slotIndex) : null);
+    } else if (slotEl || slotNumEl) {
+       const targetSlot = slotEl ? slotEl : slotNumEl.nextElementSibling;
+       if (targetSlot && targetSlot.dataset.index) handleSlotTap(parseInt(targetSlot.dataset.index));
+    } else {
+       selection = null;
+       render();
+    }
+    dragEl = null; dragId = null; dragFrom = null; dragFromIndex = null;
+    return;
+  }
+
+  const under = document.elementFromPoint(e.clientX, e.clientY);
+  const slotEl = under && under.closest('.slot');
+  const poolEl = under && under.closest('.pool-list');
+
+  let stateChanged = false;
+
+  if (slotEl) {
+    const j = parseInt(slotEl.dataset.index);
+    if (dragFrom === 'pool') {
+      pool = pool.filter(x => x !== dragId);
+      if (slots[j] !== null) { pool.push(slots[j]); }
+      slots[j] = dragId;
+      stateChanged = true;
+    } else if (dragFrom === 'slot') {
+      const i = dragFromIndex;
+      if (i !== j) {
+        const tmp = slots[j];
+        slots[j] = slots[i];
+        slots[i] = tmp;
+        stateChanged = true;
+      }
+    }
+  } else if (poolEl && dragFrom === 'slot') {
+    slots[dragFromIndex] = null;
+    pool.push(dragId);
+    stateChanged = true;
+  }
+
+  if (stateChanged) attempts++;
+
+  save();
+  render();
+  checkWinCondition();
+  dragEl = null; dragId = null; dragFrom = null; dragFromIndex = null;
+}
+
+// Manipuladores de Toque / Clique (Tap-to-place)
+function handleBlockTap(id, from, index) {
+  if (!selection) {
+    selection = { id, from, index };
+  } else if (selection.id === id) {
+    selection = null; // Desselecionar se tocar de novo
+  } else {
+    // Trocar ou mover
+    if (selection.from === 'pool' && from === 'slot') {
+      pool = pool.filter(x => x !== selection.id);
+      pool.push(slots[index]);
+      slots[index] = selection.id;
+      selection = null;
+      attempts++;
+    } else if (selection.from === 'slot' && from === 'pool') {
+      pool = pool.filter(x => x !== id);
+      pool.push(slots[selection.index]);
+      slots[selection.index] = id;
+      selection = null;
+      attempts++;
+    } else if (selection.from === 'slot' && from === 'slot') {
+      const temp = slots[index];
+      slots[index] = selection.id;
+      slots[selection.index] = temp;
+      selection = null;
+      attempts++;
+    } else {
+      // Se tocar noutro bloco do banco, apenas muda a seleção
+      selection = { id, from, index };
+      render();
+      return;
+    }
+  }
+  save();
+  render();
+  checkWinCondition();
+}
+
+function handleSlotTap(index) {
+  if (!selection) return;
+
+  if (selection.from === 'pool') {
+    pool = pool.filter(x => x !== selection.id);
+    if (slots[index] !== null) pool.push(slots[index]);
+    slots[index] = selection.id;
+  } else if (selection.from === 'slot') {
+    if (selection.index === index) { selection = null; render(); return; }
+    const temp = slots[index];
+    slots[index] = selection.id;
+    slots[selection.index] = temp;
+  }
+  attempts++;
+  selection = null;
+  save();
+  render();
+  checkWinCondition();
+}
+
+function checkWinCondition() {
+  const correct = slots.filter((id, i) => id !== null && getBlock(id).originalPosition === i).length;
+  if (correct === blocks.length && blocks.length > 0) {
+    setTimeout(() => performVerification(), 400); // Pequeno atraso para o utilizador poder ver o último verde
+  }
+}
+
+function verify() {
+  const isComplete = slots.every(id => id !== null);
+  if(!isComplete) {
+    showModal('confirm', 0, null, 'Ainda existem espaços vazios. Pretende verificar na mesma?', () => performVerification());
+    return;
+  }
+  performVerification();
+}
+
+function performVerification() {
+  attempts++;
+  let correct = 0;
+  
+  const results = slots.map((id, i) => {
+    const ok = id !== null && getBlock(id).originalPosition === i;
+    if (ok) correct++;
+    return { id, ok, text: id ? getBlock(id).text : '(vazio)' };
+  });
+  
+  save();
+  render();
+  
+  if (correct === blocks.length) {
+    showModal('success', correct, results);
+  } else {
+    showModal('partial', correct, results);
+  }
+}
+
+function showModal(kind, correct, results, customMessage = '', onConfirm = null) {
+  const overlay = document.getElementById('modalOverlay');
+  overlay.innerHTML = '';
+  const modal = document.createElement('div');
+  modal.className = 'modal ' + kind;
+  
+  if (kind === 'error') {
+    modal.innerHTML = `<div class="icon">❌</div><h2>Atenção</h2>
+      <div style="margin-bottom:16px">${customMessage}</div>
+      <button class="danger" id="closeModalBtn">OK, Entendido</button>`;
+  } else if (kind === 'confirm') {
+    modal.innerHTML = `<div class="icon">❓</div><h2>Confirmação</h2>
+      <div style="margin-bottom:16px">${customMessage}</div>
+      <button class="primary" id="confirmBtn">Sim</button>
+      <button class="secondary" id="closeModalBtn">Cancelar</button>`;
+  } else if (kind === 'success') {
+    modal.innerHTML = `<div class="icon">🏆</div><h2>Muito bem!</h2>
+      <div>Letra montada corretamente!</div>
+      <div class="pct">100%</div>
+      <div>Acertou todas as posições em ${attempts} tentativa(s)!</div>
+      <div class="result-list">${results.map(r => `🟢 ${escapeHtml(r.text)}`).join('<br>')}</div>
+      <button class="primary" id="playAgainBtn">🔄 JOGAR NOVAMENTE</button>`;
+  } else {
+    const pct = Math.round((correct / blocks.length) * 100);
+    modal.innerHTML = `<div class="icon">⚠️</div><h2>Quase lá!</h2>
+      <div>Acertou ${correct} de ${blocks.length} posições.</div>
+      <div class="bar"><div style="width:0%" id="modalBar"></div></div>
+      <div class="result-list">${results.map((r, i) => (r.ok ? '🟢 ' : '🔴 ') + (i + 1) + '. ' + escapeHtml(r.text)).join('<br>')}</div>
+      <button class="secondary" id="closeModalBtn">TENTAR NOVAMENTE</button>`;
+  }
+  
+  overlay.appendChild(modal);
+  overlay.classList.remove('hidden');
+  
+  // Atribuição de Eventos dos Botões
+  if (document.getElementById('closeModalBtn')) {
+    document.getElementById('closeModalBtn').onclick = () => overlay.classList.add('hidden');
+  }
+  if (document.getElementById('confirmBtn') && onConfirm) {
+    document.getElementById('confirmBtn').onclick = () => { overlay.classList.add('hidden'); onConfirm(); };
+  }
+  if (document.getElementById('playAgainBtn')) {
+    document.getElementById('playAgainBtn').onclick = () => { 
+      overlay.classList.add('hidden'); 
+      shuffleAndReset(); 
+      selection = null;
+      attempts = 0;
+      save(); render(); 
+    };
+  }
+
+  // Animação da barra de progresso (apenas para resultados parciais)
+  if (kind === 'partial') {
+    const pct = Math.round((correct / blocks.length) * 100);
+    setTimeout(() => { document.getElementById('modalBar').style.width = pct + '%'; }, 50);
+  }
+}
+
+function escapeHtml(s) { return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+function save() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify({ blocks, pool, slots, attempts, hasVerified })); } catch(e) {}
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    if (!s.blocks || !s.blocks.length) return false;
+    blocks = s.blocks; pool = s.pool; slots = s.slots; 
+    attempts = s.attempts || 0; 
+    return true;
+  } catch(e) { return false; }
+}
+
+if (load()) { showGame(); } else { showLanding(); }
+</script>
+</body>
+</html>
